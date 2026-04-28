@@ -26,6 +26,7 @@ A lightweight, terminal-based system monitoring CLI tool built in Go. Monitor pr
 
 - **CPU Usage** - Real-time CPU utilization with visual progress bar and color-coded thresholds
 - **RAM Usage** - Memory consumption with used/total display and percentage
+- **Disk Usage** - SSD/storage monitoring with used/total and progress bar
 - **Open Ports** - Lists all listening ports with protocol and associated programs
 - **Network Speeds** - Live upload/download speed monitoring
 - **SSH Sessions** - Active SSH connections tracking
