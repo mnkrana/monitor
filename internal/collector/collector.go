@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
 	gopsnet "github.com/shirou/gopsutil/v3/net"
 	gopsprocess "github.com/shirou/gopsutil/v3/process"
@@ -17,6 +18,9 @@ type SystemStats struct {
 	RAMTotal    uint64
 	RAMUsed     uint64
 	RAMPercent  float64
+	DiskTotal   uint64
+	DiskUsed    uint64
+	DiskPercent float64
 	OpenPorts   []PortInfo
 	SSHSessions []SSHInfo
 	NetUpload   float64
@@ -56,6 +60,9 @@ func Collect() (*SystemStats, error) {
 		stats.RAMPercent = vm.UsedPercent
 	}
 
+	// Disk
+	stats.DiskTotal, stats.DiskUsed, stats.DiskPercent = getDiskUsage()
+
 	// Open ports
 	stats.OpenPorts = getOpenPorts()
 
@@ -66,6 +73,15 @@ func Collect() (*SystemStats, error) {
 	stats.NetUpload, stats.NetDownload = getNetworkSpeed()
 
 	return stats, nil
+}
+
+func getDiskUsage() (total, used uint64, percent float64) {
+	// Get disk usage for root partition "/"
+	usage, err := disk.Usage("/")
+	if err != nil {
+		return 0, 0, 0
+	}
+	return usage.Total, usage.Used, usage.UsedPercent
 }
 
 func getOpenPorts() []PortInfo {

@@ -14,6 +14,7 @@ type Dashboard struct {
 	grid       *tview.Grid
 	cpuText    *tview.TextView
 	ramText    *tview.TextView
+	diskText   *tview.TextView
 	portsTable *tview.Table
 	sshTable   *tview.Table
 	netText    *tview.TextView
@@ -25,6 +26,7 @@ func NewDashboard() *Dashboard {
 		app:        tview.NewApplication(),
 		cpuText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
 		ramText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
+		diskText:   tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
 		portsTable: tview.NewTable().SetBorders(false).SetSelectable(false, false),
 		sshTable:   tview.NewTable().SetBorders(false).SetSelectable(false, false),
 		netText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
@@ -38,6 +40,7 @@ func NewDashboard() *Dashboard {
 func (d *Dashboard) setupGrid() {
 	d.cpuText.SetBorder(true).SetTitle(" CPU Usage ")
 	d.ramText.SetBorder(true).SetTitle(" RAM Usage ")
+	d.diskText.SetBorder(true).SetTitle(" Disk Usage ")
 	d.portsTable.SetBorder(true).SetTitle(" Open Ports ")
 	d.netText.SetBorder(true).SetTitle(" Network Speed ")
 	d.sshTable.SetBorder(true).SetTitle(" SSH Sessions ")
@@ -49,7 +52,8 @@ func (d *Dashboard) setupGrid() {
 
 	topRow := tview.NewFlex().
 		AddItem(d.cpuText, 0, 1, false).
-		AddItem(d.ramText, 0, 1, false)
+		AddItem(d.ramText, 0, 1, false).
+		AddItem(d.diskText, 0, 1, false)
 
 	bottomRight := tview.NewFlex().
 		AddItem(d.netText, 0, 1, false).
@@ -69,6 +73,7 @@ func (d *Dashboard) update(stats *collector.SystemStats) {
 	d.app.QueueUpdateDraw(func() {
 		d.updateCPU(stats)
 		d.updateRAM(stats)
+		d.updateDisk(stats)
 		d.updatePorts(stats)
 		d.updateSSH(stats)
 		d.updateNetwork(stats)
@@ -115,6 +120,28 @@ func (d *Dashboard) updateRAM(stats *collector.SystemStats) {
 	total := collector.FormatBytes(stats.RAMTotal)
 
 	d.ramText.SetText(fmt.Sprintf("[%s]%s[white]\n\n%.1f%% - %s / %s", color, bar, percent, used, total))
+}
+
+func (d *Dashboard) updateDisk(stats *collector.SystemStats) {
+	percent := stats.DiskPercent
+	barLen := 30
+	filled := int(percent / 100 * float64(barLen))
+	if filled > barLen {
+		filled = barLen
+	}
+
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", barLen-filled)
+	color := "green"
+	if percent > 90 {
+		color = "red"
+	} else if percent > 75 {
+		color = "yellow"
+	}
+
+	used := collector.FormatBytes(stats.DiskUsed)
+	total := collector.FormatBytes(stats.DiskTotal)
+
+	d.diskText.SetText(fmt.Sprintf("[%s]%s[white]\n\n%.1f%% - %s / %s", color, bar, percent, used, total))
 }
 
 func (d *Dashboard) updatePorts(stats *collector.SystemStats) {
