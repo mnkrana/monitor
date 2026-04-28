@@ -1,0 +1,17 @@
+# Binary
+monitor
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+vendor/
