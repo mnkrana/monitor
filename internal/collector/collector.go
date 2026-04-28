@@ -6,21 +6,21 @@ import (
 	"strings"
 	"time"
 
-	gopsnet "github.com/shirou/gopsutil/v3/net"
-	gopsprocess "github.com/shirou/gopsutil/v3/process"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
+	gopsnet "github.com/shirou/gopsutil/v3/net"
+	gopsprocess "github.com/shirou/gopsutil/v3/process"
 )
 
 type SystemStats struct {
-	CPUPercent    float64
-	RAMTotal      uint64
-	RAMUsed       uint64
-	RAMPercent    float64
-	OpenPorts     []PortInfo
-	SSHSessions   []SSHInfo
-	NetUpload     float64
-	NetDownload   float64
+	CPUPercent  float64
+	RAMTotal    uint64
+	RAMUsed     uint64
+	RAMPercent  float64
+	OpenPorts   []PortInfo
+	SSHSessions []SSHInfo
+	NetUpload   float64
+	NetDownload float64
 }
 
 type PortInfo struct {
