@@ -10,27 +10,31 @@ import (
 )
 
 type Dashboard struct {
-	app        *tview.Application
-	grid       *tview.Grid
-	cpuText    *tview.TextView
-	ramText    *tview.TextView
-	diskText   *tview.TextView
-	portsTable *tview.Table
-	sshTable   *tview.Table
-	netText    *tview.TextView
-	statusBar  *tview.TextView
+	app         *tview.Application
+	grid        *tview.Grid
+	cpuText     *tview.TextView
+	ramText     *tview.TextView
+	diskText    *tview.TextView
+	portsTable  *tview.Table
+	sshTable    *tview.Table
+	netText     *tview.TextView
+	statusBar   *tview.TextView
+	topCPUTable *tview.Table
+	topRAMTable *tview.Table
 }
 
 func NewDashboard() *Dashboard {
 	d := &Dashboard{
-		app:        tview.NewApplication(),
-		cpuText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
-		ramText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
-		diskText:   tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
-		portsTable: tview.NewTable().SetBorders(false).SetSelectable(false, false),
-		sshTable:   tview.NewTable().SetBorders(false).SetSelectable(false, false),
-		netText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
-		statusBar:  tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter),
+		app:         tview.NewApplication(),
+		cpuText:     tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
+		ramText:     tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
+		diskText:    tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
+		portsTable:  tview.NewTable().SetBorders(false).SetSelectable(false, false),
+		sshTable:    tview.NewTable().SetBorders(false).SetSelectable(false, false),
+		netText:     tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignLeft),
+		statusBar:   tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter),
+		topCPUTable: tview.NewTable().SetBorders(false).SetSelectable(false, false),
+		topRAMTable: tview.NewTable().SetBorders(false).SetSelectable(false, false),
 	}
 
 	d.setupGrid()
@@ -44,29 +48,36 @@ func (d *Dashboard) setupGrid() {
 	d.portsTable.SetBorder(true).SetTitle(" Open Ports ")
 	d.netText.SetBorder(true).SetTitle(" Network Speed ")
 	d.sshTable.SetBorder(true).SetTitle(" SSH Sessions ")
+	d.topCPUTable.SetBorder(true).SetTitle(" Top 5 CPU Processes ")
+	d.topRAMTable.SetBorder(true).SetTitle(" Top 5 RAM Processes ")
 
 	header := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
 		SetDynamicColors(true).
-		SetText("[::b]╔═══════════════════════════════════════════════════════════════════════╗\n[::b]║                    MONITOR - System Dashboard                              ║\n[::b]╚═══════════════════════════════════════════════════════════════════════╝")
+		SetText("[::b]╔═════════════════════════════════════════════════════════════════════╗\n[::b]║                    MONITOR - System Dashboard                              ║\n[::b]╚═════════════════════════════════════════════════════════════════════╝")
 
 	topRow := tview.NewFlex().
 		AddItem(d.cpuText, 0, 1, false).
 		AddItem(d.ramText, 0, 1, false).
 		AddItem(d.diskText, 0, 1, false)
 
-	bottomRight := tview.NewFlex().
+	midLeft := tview.NewFlex().
+		AddItem(d.portsTable, 0, 1, false).
+		AddItem(d.topCPUTable, 0, 1, false)
+
+	midRight := tview.NewFlex().
 		AddItem(d.netText, 0, 1, false).
 		AddItem(d.sshTable, 0, 1, false)
 
 	d.grid = tview.NewGrid().
-		SetRows(3, 0, 0, 3).
+		SetRows(3, 0, 0, 0, 3).
 		SetColumns(0, 0)
 	d.grid.AddItem(header, 0, 0, 1, 2, 0, 0, false).
 		AddItem(topRow, 1, 0, 1, 2, 0, 0, false).
-		AddItem(d.portsTable, 2, 0, 1, 1, 0, 0, false).
-		AddItem(bottomRight, 2, 1, 1, 1, 0, 0, false).
-		AddItem(d.statusBar, 3, 0, 1, 2, 0, 0, false)
+		AddItem(midLeft, 2, 0, 1, 1, 0, 0, false).
+		AddItem(midRight, 2, 1, 1, 1, 0, 0, false).
+		AddItem(d.topRAMTable, 3, 0, 1, 2, 0, 0, false).
+		AddItem(d.statusBar, 4, 0, 1, 2, 0, 0, false)
 }
 
 func (d *Dashboard) update(stats *collector.SystemStats) {
@@ -77,6 +88,8 @@ func (d *Dashboard) update(stats *collector.SystemStats) {
 		d.updatePorts(stats)
 		d.updateSSH(stats)
 		d.updateNetwork(stats)
+		d.updateTopCPU(stats)
+		d.updateTopRAM(stats)
 		d.updateStatus()
 	})
 }
@@ -189,6 +202,36 @@ func (d *Dashboard) updateNetwork(stats *collector.SystemStats) {
 	download := collector.FormatSpeed(stats.NetDownload)
 
 	d.netText.SetText(fmt.Sprintf("[green]↓ Download: [white]%s\n\n[blue]↑ Upload: [white]%s", download, upload))
+}
+
+func (d *Dashboard) updateTopCPU(stats *collector.SystemStats) {
+	d.topCPUTable.Clear()
+	d.topCPUTable.SetCell(0, 0, tview.NewTableCell("[::b]PID").SetSelectable(false))
+	d.topCPUTable.SetCell(0, 1, tview.NewTableCell("[::b]Name").SetSelectable(false))
+	d.topCPUTable.SetCell(0, 2, tview.NewTableCell("[::b]CPU %").SetSelectable(false))
+
+	for i, p := range stats.TopCPUProcs {
+		row := i + 1
+		d.topCPUTable.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", p.PID)).SetSelectable(false))
+		d.topCPUTable.SetCell(row, 1, tview.NewTableCell(p.Name).SetSelectable(false))
+		d.topCPUTable.SetCell(row, 2, tview.NewTableCell(fmt.Sprintf("%.1f%%", p.CPUPercent)).SetSelectable(false))
+	}
+}
+
+func (d *Dashboard) updateTopRAM(stats *collector.SystemStats) {
+	d.topRAMTable.Clear()
+	d.topRAMTable.SetCell(0, 0, tview.NewTableCell("[::b]PID").SetSelectable(false))
+	d.topRAMTable.SetCell(0, 1, tview.NewTableCell("[::b]Name").SetSelectable(false))
+	d.topRAMTable.SetCell(0, 2, tview.NewTableCell("[::b]RAM %").SetSelectable(false))
+	d.topRAMTable.SetCell(0, 3, tview.NewTableCell("[::b]RSS").SetSelectable(false))
+
+	for i, p := range stats.TopRAMProcs {
+		row := i + 1
+		d.topRAMTable.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", p.PID)).SetSelectable(false))
+		d.topRAMTable.SetCell(row, 1, tview.NewTableCell(p.Name).SetSelectable(false))
+		d.topRAMTable.SetCell(row, 2, tview.NewTableCell(fmt.Sprintf("%.1f%%", p.RAMPercent)).SetSelectable(false))
+		d.topRAMTable.SetCell(row, 3, tview.NewTableCell(collector.FormatBytes(p.RAMBytes)).SetSelectable(false))
+	}
 }
 
 func (d *Dashboard) updateStatus() {

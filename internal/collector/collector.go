@@ -25,6 +25,16 @@ type SystemStats struct {
 	SSHSessions []SSHInfo
 	NetUpload   float64
 	NetDownload float64
+	TopCPUProcs []ProcessInfo
+	TopRAMProcs []ProcessInfo
+}
+
+type ProcessInfo struct {
+	PID      int32
+	Name     string
+	CPUPercent float64
+	RAMPercent float32
+	RAMBytes  uint64
 }
 
 type PortInfo struct {
@@ -71,6 +81,9 @@ func Collect() (*SystemStats, error) {
 
 	// Network speeds
 	stats.NetUpload, stats.NetDownload = getNetworkSpeed()
+
+	// Top processes
+	stats.TopCPUProcs, stats.TopRAMProcs = getTopProcesses()
 
 	return stats, nil
 }
@@ -221,6 +234,98 @@ func FormatSpeed(bytesPerSec float64) string {
 		return fmt.Sprintf("%.2f KB/s", bytesPerSec/1024)
 	}
 	return fmt.Sprintf("%.0f B/s", bytesPerSec)
+}
+
+func getTopProcesses() (topCPU, topRAM []ProcessInfo) {
+	processes, err := gopsprocess.Processes()
+	if err != nil {
+		return
+	}
+
+	type procCPU struct {
+		info ProcessInfo
+		cpu  float64
+	}
+	type procRAM struct {
+		info ProcessInfo
+		ram  float32
+	}
+
+	cpuProcs := make([]procCPU, 0)
+	ramProcs := make([]procRAM, 0)
+
+	for _, p := range processes {
+		name, err := p.Name()
+		if err != nil {
+			continue
+		}
+		pid := p.Pid
+
+		cpuPerc, err := p.CPUPercent()
+		if err == nil && cpuPerc > 0 {
+			cpuProcs = append(cpuProcs, procCPU{
+				info: ProcessInfo{PID: pid, Name: name},
+				cpu:  cpuPerc,
+			})
+		}
+
+		memPerc, err := p.MemoryPercent()
+		if err == nil && memPerc > 0 {
+			memInfo, _ := p.MemoryInfo()
+			ramBytes := uint64(0)
+			if memInfo != nil {
+				ramBytes = memInfo.RSS
+			}
+			ramProcs = append(ramProcs, procRAM{
+				info: ProcessInfo{PID: pid, Name: name, RAMBytes: ramBytes},
+				ram:  memPerc,
+			})
+		}
+	}
+
+	// Sort by CPU
+	for i := 0; i < len(cpuProcs)-1; i++ {
+		for j := i + 1; j < len(cpuProcs); j++ {
+			if cpuProcs[j].cpu > cpuProcs[i].cpu {
+				cpuProcs[i], cpuProcs[j] = cpuProcs[j], cpuProcs[i]
+			}
+		}
+	}
+	// Sort by RAM
+	for i := 0; i < len(ramProcs)-1; i++ {
+		for j := i + 1; j < len(ramProcs); j++ {
+			if ramProcs[j].ram > ramProcs[i].ram {
+				ramProcs[i], ramProcs[j] = ramProcs[j], ramProcs[i]
+			}
+		}
+	}
+
+	limit := 5
+	if len(cpuProcs) < limit {
+		limit = len(cpuProcs)
+	}
+	for i := 0; i < limit; i++ {
+		topCPU = append(topCPU, ProcessInfo{
+			PID:       cpuProcs[i].info.PID,
+			Name:       cpuProcs[i].info.Name,
+			CPUPercent: cpuProcs[i].cpu,
+		})
+	}
+
+	limit = 5
+	if len(ramProcs) < limit {
+		limit = len(ramProcs)
+	}
+	for i := 0; i < limit; i++ {
+		topRAM = append(topRAM, ProcessInfo{
+			PID:        ramProcs[i].info.PID,
+			Name:        ramProcs[i].info.Name,
+			RAMPercent:  ramProcs[i].ram,
+			RAMBytes:    ramProcs[i].info.RAMBytes,
+		})
+	}
+
+	return
 }
 
 func GetLocalIPs() []string {
