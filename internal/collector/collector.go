@@ -30,11 +30,11 @@ type SystemStats struct {
 }
 
 type ProcessInfo struct {
-	PID      int32
-	Name     string
+	PID        int32
+	Name       string
 	CPUPercent float64
 	RAMPercent float32
-	RAMBytes  uint64
+	RAMBytes   uint64
 }
 
 type PortInfo struct {
@@ -306,7 +306,7 @@ func getTopProcesses() (topCPU, topRAM []ProcessInfo) {
 	}
 	for i := 0; i < limit; i++ {
 		topCPU = append(topCPU, ProcessInfo{
-			PID:       cpuProcs[i].info.PID,
+			PID:        cpuProcs[i].info.PID,
 			Name:       cpuProcs[i].info.Name,
 			CPUPercent: cpuProcs[i].cpu,
 		})
@@ -319,9 +319,9 @@ func getTopProcesses() (topCPU, topRAM []ProcessInfo) {
 	for i := 0; i < limit; i++ {
 		topRAM = append(topRAM, ProcessInfo{
 			PID:        ramProcs[i].info.PID,
-			Name:        ramProcs[i].info.Name,
-			RAMPercent:  ramProcs[i].ram,
-			RAMBytes:    ramProcs[i].info.RAMBytes,
+			Name:       ramProcs[i].info.Name,
+			RAMPercent: ramProcs[i].ram,
+			RAMBytes:   ramProcs[i].info.RAMBytes,
 		})
 	}
 
